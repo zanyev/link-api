@@ -4,32 +4,7 @@ from fastapi import UploadFile, File
 from fastapi import HTTPException
 import csv
 import io
-
-
-MAX_SIZE = 20 * 1024 * 1024  # 20MB
-
-T1_MAPPING = {
-    "codigo": "business_id",
-    "produto": "name",
-    "marca": "brand_name",
-    "descricao": "description",
-    "preco": "price",
-    "categoria": "category",
-    "unidade": "unit_type",
-}
-
-
-T2_MAPPING = {
-    "sku": "business_id",
-    "nome_do_item": "name",
-    "fabricante": "brand_name",
-    "caracteristicas": "description",
-    "valor": "price",
-    "ncm": "category",
-    "unidade_medida": "unit_type",
-    "estoque": "stock",
-}
-
+from core.config import settings
 
 def detect_format_from_header(header: list[str]) -> str:
     if "produto" in header and "preco" in header:
@@ -48,7 +23,7 @@ def normalize_csv(file) -> io.StringIO:
         raise ValueError("CSV without header")
 
     fmt = detect_format_from_header(reader.fieldnames)
-    mapping = T1_MAPPING if fmt == "t1" else T2_MAPPING
+    mapping = settings.t1_mapping if fmt == "t1" else settings.t2_mapping
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -120,7 +95,7 @@ def ingest_items_csv(
     if not file.filename.endswith(".csv"):
         raise HTTPException(400, "Invalid file type")
 
-    if file.size and file.size > MAX_SIZE:
+    if file.size and file.size > settings.max_size:
         raise HTTPException(413, "File too large")
     
     normalized_file = normalize_csv(file.file)
@@ -141,4 +116,5 @@ def ingest_items_csv(
         "unit_type",
     ])
     return None
+
 

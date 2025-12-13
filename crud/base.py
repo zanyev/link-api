@@ -20,10 +20,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         self.model = model
 
-    def get(self, db: Session, id: Any) -> Optional[ModelType]:
-        """Get a record by its internal ID."""
-        return db.get(self.model, id)
-    
+    def get_from_business_id(self, db: Session, business_id: str) -> Optional[ModelType]:
+        """Get a record by its business ID."""
+        stmt = select(self.model).where(self.model.business_id == business_id)
+        return db.exec(stmt).first()
+
     def create(self, db: Session, obj_in: CreateSchemaType, auto_commit: bool = True) -> ModelType:
         """Create a new record in the database."""
         obj_in_data = self.model.model_validate(obj_in)
