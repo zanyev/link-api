@@ -1,6 +1,6 @@
 from sqlmodel import Field, SQLModel, Relationship
 from typing import List, TYPE_CHECKING
-from .base import BaseCreated, BaseTable, BaseExtID
+from .base import BaseCreated, BaseTable
 
 
 if TYPE_CHECKING:
@@ -14,7 +14,7 @@ class BaseItemCluster(SQLModel):
 class ItemClusterCreate(BaseItemCluster, BaseCreated):
     pass
 
-class ItemCluster(BaseItemCluster, BaseExtID, BaseCreated, BaseTable, table=True):
+class ItemCluster(BaseItemCluster, BaseCreated, BaseTable, table=True):
     __tablename__ = "item_cluster"
 
     raw_items: List["RawItem"] = Relationship(back_populates="item_cluster")

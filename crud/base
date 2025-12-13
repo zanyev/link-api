@@ -1,0 +1,38 @@
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from uuid import UUID
+
+from sqlmodel import Session, SQLModel, select
+
+ModelType = TypeVar("ModelType", bound=Any)
+CreateSchemaType = TypeVar("CreateSchemaType", bound=SQLModel)
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=SQLModel)
+
+
+class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+    def __init__(self, model: Type[ModelType]):
+        """
+        CRUD object with default methods to Create, Read, Update, Delete (CRUD).
+
+        **Parameters**
+
+        * `model`: A SQLAlchemy model class
+        * `schema`: A Pydantic model (schema) class
+        """
+        self.model = model
+
+    def get(self, db: Session, id: Any) -> Optional[ModelType]:
+        """Get a record by its internal ID."""
+        return db.get(self.model, id)
+    
+    def create(self, db: Session, obj_in: CreateSchemaType, auto_commit: bool = True) -> ModelType:
+        """Create a new record in the database."""
+        obj_in_data = self.model.model_validate(obj_in)
+        db.add(obj_in_data)
+        if auto_commit:
+            db.commit()
+            db.refresh(obj_in_data)
+        else:
+            # auto_flush is on, so, no need to do it unless necessary for not commiting
+            db.flush()
+        return obj_in_data
+    

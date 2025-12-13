@@ -3,7 +3,7 @@ from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, Numeric
 from typing import TYPE_CHECKING, Optional
 
-from .base import BaseCreated, BaseTable, BaseExtID
+from .base import BaseCreated, BaseTable
 
 if TYPE_CHECKING:
     from .item_cluster import ItemCluster
@@ -27,7 +27,7 @@ class BaseRawItem(SQLModel):
 class RawItemCreate(BaseRawItem, BaseCreated):
     pass
 
-class RawItem(BaseRawItem, BaseExtID, BaseCreated, BaseTable, table=True):
+class RawItem(BaseRawItem, BaseCreated, BaseTable, table=True):
     __tablename__ = "raw_item"
 
     item_cluster: Optional["ItemCluster"] = Relationship(

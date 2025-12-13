@@ -24,9 +24,6 @@ class BaseTable(SQLModel):
 class BaseCreated(SQLModel):
     created_by: str
 
-class BaseExtID(SQLModel):
-    external_id: UUID = Field(default_factory=uuid4)
-
 class BaseUpdated(SQLModel):
     updated_at: datetime | None = Field(
         default=None,
