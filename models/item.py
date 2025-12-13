@@ -20,6 +20,8 @@ class BaseRawItem(SQLModel):
     )
 
     stock: Optional[int] = None
+    category: Optional[str] = None
+    unit_type: Optional[str] = None
 
 
 class RawItemCreate(BaseRawItem, BaseCreated):

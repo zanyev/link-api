@@ -13,6 +13,8 @@ def insert_initial_data():
             name="Sample Item",
             brand_name="Sample Brand",
             description="This is a sample item.",
+            category="Sample Category",
+            unit_type="Sample Unit",
             price=19.99,
             stock=100
         )
