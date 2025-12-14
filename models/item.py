@@ -2,6 +2,7 @@ from decimal import Decimal
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, Numeric
 from typing import TYPE_CHECKING, Optional
+from pgvector.sqlalchemy import Vector
 
 from .base import BaseCreated, BaseTable
 
@@ -22,6 +23,12 @@ class BaseRawItem(SQLModel):
     stock: Optional[int] = None
     category: Optional[str] = None
     unit_type: Optional[str] = None
+
+    # Embedding com 1536 dimensões (text-embedding-3-small/large)
+    name_description_embedding: Optional[list[float]] = Field(
+        default=None,
+        sa_column=Column(Vector(1536))
+    )
 
 
 class RawItemCreate(BaseRawItem, BaseCreated):

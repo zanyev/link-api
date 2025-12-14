@@ -16,7 +16,8 @@ def insert_initial_data():
             category="Sample Category",
             unit_type="Sample Unit",
             price=19.99,
-            stock=100
+            stock=100,
+            name_description_embedding=[0.0]*1536  # Example embedding vector
         )
         session.add(raw_item)
         session.flush()
