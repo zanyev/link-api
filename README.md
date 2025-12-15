@@ -1,3 +1,7 @@
+## Libs postgress
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS vector;
+
 ## Rule for cluster job
 
 1. items_with_cluster
@@ -17,3 +21,4 @@
        crates new cluster for each grupo of products
 
 6. Updates cluster_id
+

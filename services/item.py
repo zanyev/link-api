@@ -152,8 +152,7 @@ def ingest_items_csv(
         "stock",
         "category",
         "unit_type",
-        "description_embedding",
-        "name_embedding"
+        "name_description_embedding",
     ])
     return None
 

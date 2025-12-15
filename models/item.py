@@ -1,13 +1,13 @@
-from decimal import Decimal
+from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, Numeric
-from typing import TYPE_CHECKING, Optional
+from decimal import Decimal
 from pgvector.sqlalchemy import Vector
 
 from .base import BaseCreated, BaseTable
 
 if TYPE_CHECKING:
-    from .item_cluster import ItemCluster
+    from .item_cluster_snapshot import ItemClusterSnapshot
 
 
 class BaseRawItem(SQLModel):
@@ -16,27 +16,26 @@ class BaseRawItem(SQLModel):
     brand_name: str
     description: str
 
-    price: Decimal = Field(
-        sa_column=Column(Numeric(7, 2))
-    )
+    price: Decimal = Field(sa_column=Column(Numeric(7, 2)))
 
     stock: Optional[int] = None
     category: Optional[str] = None
     unit_type: Optional[str] = None
 
-    # Embedding com 1536 dimensões (text-embedding-3-small/large)
     name_description_embedding: Optional[list[float]] = Field(
         default=None,
         sa_column=Column(Vector(1536))
     )
 
 
-class RawItemCreate(BaseRawItem, BaseCreated):
-    pass
-
-class RawItem(BaseRawItem, BaseCreated, BaseTable, table=True):
+class RawItem(
+    BaseRawItem,
+    BaseCreated,
+    BaseTable,
+    table=True
+):
     __tablename__ = "raw_item"
 
-    item_cluster: Optional["ItemCluster"] = Relationship(
-        back_populates="raw_items"
+    cluster_snapshots: List["ItemClusterSnapshot"] = Relationship(
+        back_populates="raw_item"
     )
