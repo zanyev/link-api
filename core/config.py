@@ -1,4 +1,8 @@
 from pydantic_settings import BaseSettings
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 class AppSettings(BaseSettings):
     """Application settings using Pydantic."""
@@ -26,5 +30,5 @@ class AppSettings(BaseSettings):
         "estoque": "stock",
     }
 
-
+client = OpenAI()
 settings = AppSettings()
