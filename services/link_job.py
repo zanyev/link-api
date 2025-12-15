@@ -69,6 +69,10 @@ def generate_clusters():
 
     return rows
 
+def link_job():
+    rows = generate_clusters()
+    persist_clusters_bulk_engine(engine, rows)
+
 
 if __name__ == '__main__':
     rows = generate_clusters()
