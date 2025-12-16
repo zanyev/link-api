@@ -4,7 +4,7 @@ from typing import Generic , TypeVar
 from pydantic import BaseModel
 from sqlalchemy import TIMESTAMP, func, text
 from sqlmodel import Field, SQLModel
-from uuid import UUID, uuid4
+
 
 T = TypeVar("T")
 
