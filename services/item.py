@@ -264,7 +264,6 @@ def search_items_with_clusters(db: Session, query: str, top_k: int = 10):
               AND ics.cluster_id = ANY(:cluster_ids)
             """
         )
-        # Postgres requires proper typing for ANY with arrays; sqlmodel/text supports passing list directly in psycopg
         assoc_rows = db.exec(assoc_sql.bindparams(run_id=latest_run_id, cluster_ids=list(cluster_ids))).fetchall()
 
         # Build a mapping cluster_id -> dict of associated items keyed by id (to avoid duplicates)
