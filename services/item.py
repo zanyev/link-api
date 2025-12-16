@@ -1,4 +1,4 @@
-from sqlmodel import Session
+from sqlmodel import Session, text
 from typing import BinaryIO
 from fastapi import UploadFile, File
 from fastapi import HTTPException
@@ -155,5 +155,150 @@ def ingest_items_csv(
         "name_description_embedding",
     ])
     return None
+
+def search_items_with_clusters(db: Session, query: str, top_k: int = 10):
+    """Search nearest items by embedding and include cluster ids only from the latest snapshot run. Also return associated items per found cluster."""
+    embedding = generate_embeddings_batch([query])[0]
+    emb_str = "[" + ",".join(str(x) for x in embedding) + "]"
+
+    # Get latest cluster_run_id by created_at
+    latest_run_sql = text(
+        """
+        SELECT ics.cluster_run_id
+        FROM item_cluster_snapshot ics
+        ORDER BY ics.created_at DESC
+        LIMIT 1
+        """
+    )
+    latest_row = db.exec(latest_run_sql).first()
+    latest_run_id = latest_row[0] if latest_row else None
+
+    # Build query filtering snapshots to the latest run
+    if latest_run_id is not None:
+        sql = text(
+            """
+            SELECT 
+                ri.id,
+                ri.business_id,
+                ri.name,
+                ri.brand_name,
+                ri.description,
+                ri.price,
+                ri.stock,
+                ri.category,
+                ri.unit_type,
+                ics.cluster_id,
+                (ri.name_description_embedding <-> CAST(:emb AS vector(1536))) AS distance
+            FROM raw_item ri
+            LEFT JOIN item_cluster_snapshot ics 
+                ON ics.raw_item_id = ri.id AND ics.cluster_run_id = :run_id
+            ORDER BY ri.name_description_embedding <-> CAST(:emb AS vector(1536))
+            LIMIT :k
+            """
+        )
+        rows = db.exec(sql.bindparams(emb=emb_str, run_id=latest_run_id, k=top_k)).fetchall()
+    else:
+        # Fallback without clusters if none exist
+        sql = text(
+            """
+            SELECT 
+                ri.id,
+                ri.business_id,
+                ri.name,
+                ri.brand_name,
+                ri.description,
+                ri.price,
+                ri.stock,
+                ri.category,
+                ri.unit_type,
+                NULL AS cluster_id,
+                (ri.name_description_embedding <-> CAST(:emb AS vector(1536))) AS distance
+            FROM raw_item ri
+            ORDER BY ri.name_description_embedding <-> CAST(:emb AS vector(1536))
+            LIMIT :k
+            """
+        )
+        rows = db.exec(sql.bindparams(emb=emb_str, k=top_k)).fetchall()
+
+    items: dict[int, dict] = {}
+    cluster_ids: set[int] = set()
+    for row in rows:
+        item_id = row.id
+        if item_id not in items:
+            items[item_id] = {
+                "id": row.id,
+                "business_id": row.business_id,
+                "name": row.name,
+                "brand_name": row.brand_name,
+                "description": row.description,
+                "price": str(row.price) if row.price is not None else None,
+                "stock": row.stock,
+                "category": row.category,
+                "unit_type": row.unit_type,
+                "distance": float(row.distance) if row.distance is not None else None,
+                "cluster_ids": [],
+                "associated_items": {}
+            }
+        if row.cluster_id is not None and row.cluster_id not in items[item_id]["cluster_ids"]:
+            items[item_id]["cluster_ids"].append(row.cluster_id)
+            cluster_ids.add(row.cluster_id)
+
+    # If we have clusters and latest_run_id, fetch associated items for those clusters
+    if latest_run_id is not None and cluster_ids:
+        assoc_sql = text(
+            """
+            SELECT 
+                ics.cluster_id,
+                ri.id,
+                ri.business_id,
+                ri.name,
+                ri.brand_name,
+                ri.description,
+                ri.price,
+                ri.stock,
+                ri.category,
+                ri.unit_type
+            FROM item_cluster_snapshot ics
+            JOIN raw_item ri ON ri.id = ics.raw_item_id
+            WHERE ics.cluster_run_id = :run_id
+              AND ics.cluster_id = ANY(:cluster_ids)
+            """
+        )
+        # Postgres requires proper typing for ANY with arrays; sqlmodel/text supports passing list directly in psycopg
+        assoc_rows = db.exec(assoc_sql.bindparams(run_id=latest_run_id, cluster_ids=list(cluster_ids))).fetchall()
+
+        # Build a mapping cluster_id -> dict of associated items keyed by id (to avoid duplicates)
+        cluster_to_items: dict[int, dict[int, dict]] = {}
+        for arow in assoc_rows:
+            cid = arow.cluster_id
+            if cid not in cluster_to_items:
+                cluster_to_items[cid] = {}
+            # Upsert by id to keep one copy and avoid duplicates
+            cluster_to_items[cid][arow.id] = {
+                "id": arow.id,
+                "business_id": arow.business_id,
+                "name": arow.name,
+                "brand_name": arow.brand_name,
+                "description": arow.description,
+                "price": str(arow.price) if arow.price is not None else None,
+                "stock": arow.stock,
+                "category": arow.category,
+                "unit_type": arow.unit_type,
+            }
+
+        # Attach to each result only the clusters it belongs to, with de-duplicated associated items and excluding the item itself
+        for item in items.values():
+            assoc = {}
+            for cid in item["cluster_ids"]:
+                # Get items dict for this cluster and remove the current item id if present
+                items_dict = cluster_to_items.get(cid, {})
+                if items_dict:
+                    # Build a unique list excluding the current item
+                    assoc[cid] = [v for iid, v in items_dict.items() if iid != item["id"]]
+                else:
+                    assoc[cid] = []
+            item["associated_items"] = assoc
+
+    return list(items.values())
 
 
